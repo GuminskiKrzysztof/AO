@@ -119,8 +119,8 @@ namespace AOA
 
                                 if (testFunction(newPosition) < FBest)
                                 {
-                                    XBest = newPosition;
-                                    FBest = testFunction(XBest);
+                                XBest = (double[])newPosition.Clone();
+                                FBest = testFunction(XBest);
                                 }
                             }    
                         }
@@ -159,8 +159,8 @@ namespace AOA
 
                                 if (testFunction(newPosition) < FBest)
                                 {
-                                    XBest = newPosition;
-                                    FBest = testFunction(XBest);
+                                XBest = (double[])newPosition.Clone();
+                                FBest = testFunction(XBest);
                                 }
                             }
                         }
@@ -205,7 +205,7 @@ namespace AOA
 
                             if (testFunction(newPosition) < FBest)
                             {
-                                XBest = newPosition;
+                                XBest = (double[])newPosition.Clone();
                                 FBest = testFunction(XBest);
                             }
                         }
@@ -213,7 +213,8 @@ namespace AOA
                 }
                     else
                     {
-                     int  r1 = rand.Next(20);
+                    double qf = Math.Pow(iteration, (2 * rand.NextDouble() - 1) / Math.Pow(1 - iterations, 2));
+                    int  r1 = rand.Next(20);
                        
                         double g2 = 2 * (1 - iteration/iterations);
                         
@@ -224,7 +225,7 @@ namespace AOA
                             int do_control = 0;
                             do { 
                             double g1 = 2 * rand.NextDouble() - 1;
-                            double qf = Math.Pow(iteration, (2 * rand.NextDouble() - 1) / Math.Pow(1 - iterations, 2));
+                            
                             double theta = -omega * rand.Next(dimentions) + ((3 * Math.PI) / 2);
                                 double r = r1 + U * rand.Next(dimentions);
                                 x = r * Math.Sin(theta);
@@ -247,8 +248,8 @@ namespace AOA
 
                                 if (testFunction(newPosition) < FBest)
                                 {
-                                    XBest = newPosition;
-                                    FBest = testFunction(XBest);
+                                XBest = (double[])newPosition.Clone();
+                                FBest = testFunction(XBest);
                                 }
                             }
                         }
