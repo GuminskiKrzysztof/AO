@@ -7,295 +7,145 @@ using MathNet.Numerics;
 
 namespace AOA
 {
-    class Aquila : IOptimizationAlgorithm
+    class AquilaOptimizer: IOptimizationAlgorithm
     {
-        public string Name { get; set; }
-
         public double[] XBest { get; set; }
-
-        public double FBest { get; set; }
-
+        public string Name { get; set; }
+        public double FBest{ get; set; }
         public int NumberOfEvaluationFitnessFunction { get; set; }
-        private double[][] range;
-        private double[][] population;
-        private double[] functionValue;
-        private int populationSize;
-        private int dimentions;
+        private Func<double[], double> function;
+        private int dim;
+        private double[][] limits;
+        private int population_size;
         private int iterations;
         private double alpha;
-        private double beta;
         private double delta;
-        private double omega;
-        private int D;
-        private double s;
-        private double U;
-        private int r1;
-        public int OOO = 0;
-        private double x;
-        private double y;
-        private double sigma;
+        private double beta;
+        private double[][] population;
         private Random rand;
-        Func<double[], double> testFunction;
-
-        private int rcount;
-        private double r;
-
-        public Aquila(Func<double[], double> myFuncion, int dim_in, int iterations_in, double[][] range_in, int population_size_in, double alpha_in, double beta_in,
-            double delta_in, double omega_in, int D_in, double U_in, double s_in, int r1_in)
+        public AquilaOptimizer(Func<double[], double> function, int dim, double[][] limits, int population_size, int iterations, double alpha, double delta, double beta)
         {
-            Name = "AOA";
-            populationSize = population_size_in;
-            dimentions = dim_in;
-            iterations = iterations_in;
-            testFunction = myFuncion;
-            range = range_in;
-            alpha = alpha_in;
-            beta = beta_in;
-            delta = delta_in;
-            omega = omega_in;
-            rcount = 0;
-            U = U_in;
-            s = s_in;
-            r1 = r1_in;
-            OOO = 0;
-            sigma = ((SpecialFunctions.Gamma(1 + beta)) * Math.Sin(Math.PI * beta / 2)) / ((SpecialFunctions.Gamma((1 + beta) / 2)) * beta * Math.Pow(2, (beta - 1) / 2));
-            rand = new Random();
-
+            this.function = function;
+            this.dim = dim;
+            this.limits = limits;
+            this.population_size = population_size;
+            this.iterations = iterations;
+            this.alpha = alpha;
+            this.delta = delta;
+            this.beta = beta;
+            this.rand = new Random();
         }
 
         private void CreatePopulation()
         {
-            population = new double[populationSize][];
-            for (int i = 0; i < populationSize; i++)
+            population = new double[population_size][];
+            for (int i = 0; i < population_size; i++)
             {
-                population[i] = new double[dimentions];
-            }
-
-            for (int i = 0; i < populationSize; i++)
-            {
-                for (int j = 0; j < dimentions; j++)
-                {
-                    population[i][j] = rand.NextDouble() * (range[j][1] - range[j][0]) + range[j][0];
-                }
+                population[i] = new double[dim];
+                population[i] = Enumerable.Range(0, dim).Select(j => rand.NextDouble() * (limits[j][1] - limits[j][0]) + limits[j][0]).ToArray();
             }
         }
 
-        private void UpdatePositions(int iteration)
+        private void FindBest()
         {
-            double[] newPosition = new double[dimentions];
-
-            double[] meanDimentions = new double[dimentions];
-            for (int i = 0; i < dimentions; i++)
+            for (int i = 0; i < population_size; i++)
             {
-                meanDimentions[i] = 0.0;
-                for (int j = 0; j < populationSize; j++)
+                if (function(population[i]) < FBest)
                 {
-                    meanDimentions[i] += population[j][i];
-                }
-                meanDimentions[i] /= populationSize;
-            }
-
-            if (iteration < iterations * 2 / 3)
-            {
-                if (rand.NextDouble() <= 0.5)
-                {
-                   
-                    for (int i = 0; i < populationSize; i++)
-                    {
-                        for (int j = 0; j < dimentions; j++)
-                        {
-                            int do_control = 0;
-                            do
-                            {
-                                newPosition[j] = XBest[j] * (1 - (iteration / iterations)) + (meanDimentions[j] - XBest[j] * rand.NextDouble());
-                                do_control++;
-                            } while (!(range[j][0] <= newPosition[j] && newPosition[j] <= range[j][1]) && do_control < 1000);
-                            if (do_control == 1000)
-                            {
-                                newPosition[j] = meanDimentions[j];
-                                //OOO += 1;
-                            }
-
-
-
-                        }
-
-                        if (testFunction(newPosition) < functionValue[i])
-                        {
-                            population[i] = newPosition;
-                            functionValue[i] = testFunction(newPosition);
-
-
-                            if (testFunction(newPosition) < FBest)
-                            {
-                                XBest = (double[])newPosition.Clone();
-                                FBest = testFunction(XBest);
-                            }
-                        }
-                    }
-
-
-                }
-                else
-                {
-                    
-                    int r1 = rand.Next(20);
-                    double[] levyD = new double[dimentions];
-                    for (int j = 0; j < dimentions; j++)
-                    {
-                         levyD[j] = s * rand.NextDouble() * sigma / Math.Pow(rand.NextDouble(), 1 / beta);
-                    }
-                    if (rcount == 0)
-                    {
-                        r = r1 + U * rand.Next(dimentions);
-                        rcount = rand.Next(10);
-                    }
-                    rcount--;
-                    for (int i = 0; i < populationSize; i++)
-                    {
-                        double theta = -omega * rand.Next(dimentions) + ((3 * Math.PI) / 2);
-                        
-                        x = r * Math.Sin(theta);
-                        y = r * Math.Cos(theta);
-                       // difrent for every dim ???? 
-                        int randomPopulation = rand.Next(populationSize);
-                        for (int j = 0; j < dimentions; j++)
-                        {
-                            int do_control = 0;
-                            do
-                            {
-                                newPosition[j] = XBest[j] * levyD[j] + population[randomPopulation][j] * ((rand.Next(20) / 10) - 1) +  (y - x) * ((rand.Next(20)/10)-1);
-                                do_control++;
-                            } while (!(range[j][0] <= newPosition[j] && newPosition[j] <= range[j][1]) && do_control < 1000);
-                            if (do_control == 1000)
-                            {
-                                newPosition[j] = meanDimentions[j];
-                                OOO += 1;
-                            }
-                        }
-
-                        if (testFunction(newPosition) < functionValue[i])
-                        {
-                            population[i] = newPosition;
-                            functionValue[i] = testFunction(newPosition);
-
-
-                            if (testFunction(newPosition) < FBest)
-                            {
-                                XBest = (double[])newPosition.Clone();
-                                FBest = testFunction(XBest);
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                if (rand.NextDouble() <= 0.5)
-                {
-                    
-
-                    for (int i = 0; i < populationSize; i++)
-                    {
-                        for (int j = 0; j < dimentions; j++)
-                        {
-                            int do_control = 0;
-                            do
-                            {
-                                do_control++;
-                                newPosition[j] = (XBest[j] - meanDimentions[j]) * alpha - rand.NextDouble() + ((range[j][1] - range[j][0]) * rand.NextDouble() + range[j][0]) * delta;
-                            } while (!(range[j][0] <= newPosition[j] && newPosition[j] <= range[j][1]) && do_control < 1000);
-                            if (do_control == 1000)
-                            {
-                                newPosition[j] = meanDimentions[j];
-                                //OOO += 1;
-                            }
-                        }
-
-                        if (testFunction(newPosition) < functionValue[i])
-                        {
-                            population[i] = newPosition;
-                            functionValue[i] = testFunction(newPosition);
-
-
-                            if (testFunction(newPosition) < FBest)
-                            {
-                                XBest = (double[])newPosition.Clone();
-                                FBest = testFunction(XBest);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    double qf = Math.Pow(iteration, (2 * rand.NextDouble() - 1) / Math.Pow(1 - iterations, 2));
-                    int r1 = rand.Next(20);
-
-                    double g2 = 2 * (1 - iteration / iterations);
-
-                    for (int i = 0; i < populationSize; i++)
-                    {
-                        for (int j = 0; j < dimentions; j++)
-                        {
-                            int do_control = 0;
-                            do
-                            {
-                                double g1 = 2 * rand.NextDouble() - 1;
-
-                                double theta = -omega * rand.Next(dimentions) + ((3 * Math.PI) / 2);
-                                double r = r1 + U * rand.Next(dimentions);
-                                x = r * Math.Sin(theta);
-                                y = r * Math.Cos(theta);
-                                double levy = s * rand.NextDouble() * sigma / Math.Pow(rand.NextDouble(), 1 / beta); // difrent for every dim ???? 
-                                newPosition[j] = qf * XBest[j] - g1 * population[i][j] * rand.NextDouble() - g2 * levy + rand.NextDouble() * g1;
-                                do_control++;
-                            } while (!(range[j][0] <= newPosition[j] && newPosition[j] <= range[j][1]) && do_control < 1000);
-                            if (do_control == 1000)
-                            {
-                                newPosition[j] = meanDimentions[j];
-                                //OOO += 1;
-                            }
-                        }
-
-                        if (testFunction(newPosition) < functionValue[i])
-                        {
-                            population[i] = newPosition;
-                            functionValue[i] = testFunction(newPosition);
-
-
-                            if (testFunction(newPosition) < FBest)
-                            {
-                                XBest = (double[])newPosition.Clone();
-                                FBest = testFunction(XBest);
-                            }
-                        }
-                    }
+                    FBest = function(population[i]);
+                    XBest = (double[])population[i].Clone();
                 }
             }
         }
 
+        private double[] Levy(int dim)
+        {
+            double sigma = Math.Pow(
+            (SpecialFunctions.Gamma(1 + beta) * Math.Sin(Math.PI * beta / 2))
+            / (SpecialFunctions.Gamma((1 + beta) / 2) * beta * Math.Pow(2, (beta - 1) / 2)),
+            1 / beta);
+            double[] u = new double[dim];
+            double[] v = new double[dim];
+
+            for (int i = 0; i < dim; i++)
+            {
+                u[i] = Math.Sqrt(-2.0 * Math.Log(rand.NextDouble())) * Math.Cos(2.0 * Math.PI * rand.NextDouble()) * sigma;
+                v[i] = Math.Sqrt(-2.0 * Math.Log(rand.NextDouble())) * Math.Cos(2.0 * Math.PI * rand.NextDouble());
+            }
+
+            double[] step = new double[dim];
+            for (int i = 0; i < dim; i++)
+            {
+                step[i] = u[i] / Math.Pow(Math.Abs(v[i]), 1 / beta);
+            }
+
+            return step;
+        }
+
+        private void updatePositions(int iteration)
+        {
+            double g2 = 2 * rand.NextDouble() - 1;
+            double g1 = 2 * (1 - iteration / iterations);
+            int[] d1 = Enumerable.Range(1, dim).ToArray();
+            double u = 0.0265;
+            int r0 = 10;
+            double[] r = d1.Select(d => r0 + u * d).ToArray();
+            double omega = 0.005;
+            double phi0 = 3 * Math.PI / 2;
+            double[] phi = d1.Select(d => -omega * d + phi0).ToArray();
+            double[] x = phi.Zip(r, (pi, ri) => ri * Math.Sin(pi)).ToArray();
+            double[] y = phi.Zip(r, (pi, ri) => ri * Math.Cos(pi)).ToArray();
+            double qf = Math.Pow(iteration, ((2 * rand.NextDouble() - 1) / (Math.Pow(1 - iterations, 2))));
+            double[][] new_population = new double[population_size][];
+            for (int i = 0; i < population_size; i++)
+            {
+                new_population[i] = new double[dim];
+                if (iteration < iterations * 2 / 3)
+                {
+                    if (rand.NextDouble() < 0.5)
+                    {
+                        new_population[i] = XBest.Select(xi => xi * (1 - iteration / iterations) + (population[i].Average() - xi) * rand.NextDouble()).ToArray();
+                    }
+                    else
+                    {
+                        new_population[i] = Enumerable.Range(0, XBest.Length).Select(j => XBest[j] * Levy(dim)[j] + population[rand.Next(population_size)][j] +
+                        (x[j] - y[j]) * rand.NextDouble()).ToArray();
+
+                    }
+                }
+                else
+                {
+                    if (rand.NextDouble() < 0.5)
+                    {
+                        new_population[i] = limits.Zip(XBest, (li, xi) => (xi - population[i].Average()) * alpha - rand.NextDouble() +
+                        ((li[1] - li[0]) * rand.NextDouble() - li[0]) * delta).ToArray();
+                    }
+                    else
+                    {
+                        new_population[i] = XBest.Zip(population[i].Zip(Levy(dim), (pi, li) => g2 * pi * rand.NextDouble() + g1 * li).ToArray()
+                            , (xi, lp) => qf * xi - lp + rand.NextDouble() * g2).ToArray();
+                    }
+                }
+
+            }
+            for (int k = 0; k < population_size; k++)
+            {
+                if (function(population[k]) > function(new_population[k]))
+                {
+                    population[k] = (double[])new_population[k].Clone();
+                }
+            }
+
+        }
         public double Solve()
         {
             CreatePopulation();
-            XBest = population[0];
-            FBest = testFunction(population[0]);
-            functionValue = new double[populationSize];
-            for (int i = 0; i < populationSize; i++)
+            XBest = (double[])population[0].Clone();
+            FBest = function(XBest);
+            for (int iter = 0; iter < iterations; iter++)
             {
-                functionValue[i] = testFunction(population[i]);
-            }
-            for (int i = 0; i < iterations; i++)
-            {
-                //Console.WriteLine(i < iterations * 2 / 3);
-                //Console.WriteLine(FBest);
-                //foreach (double d in XBest)
-                {
-                  //  Console.Write(" " + d.ToString());
-                }
-                //Console.WriteLine();
-                UpdatePositions(i);
-
-
+                updatePositions(iter);
+                FindBest();
             }
             return FBest;
         }
